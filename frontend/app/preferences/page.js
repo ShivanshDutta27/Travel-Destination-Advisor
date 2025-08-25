@@ -1,40 +1,58 @@
 "use client"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { useRouter } from "next/navigation"
+import { useDispatch, useSelector } from "react-redux"
+import { addPref, removePref, addCustomPref } from "@/store/prefsSlice"
 
 const defaultOptions = [
-  "Mountains", "Beaches", "City Life", "History",
-  "Nightlife", "Adventure", "Food", "Culture",
-  "Nature", "Shopping", "Wildlife", "Festivals"
+  "mountains", "beaches", "city life", "history",
+  "nightlife", "adventure", "food", "culture",
+  "nature", "shopping", "wildlife", "festivals"
 ]
 
 export default function PreferencesPage() {
+  useEffect(() => {
+    localStorage.removeItem("prefs")
+    localStorage.removeItem("preferences")
+  }, [])
+
+  const dispatch = useDispatch()
+  const selected = useSelector((state) => state.prefs.selected)
   const [options, setOptions] = useState(defaultOptions)
-  const [selected, setSelected] = useState([])
   const [adding, setAdding] = useState(false)
   const [newPref, setNewPref] = useState("")
   const router = useRouter()
 
+  const capitalize = (str) => str.replace(/\b\w/g, c => c.toUpperCase())
+
   const toggleSelect = (opt) => {
-    setSelected((prev) =>
-      prev.includes(opt) ? prev.filter((o) => o !== opt) : [...prev, opt]
-    )
+    const lowerOpt = opt.toLowerCase()
+    if (selected.includes(lowerOpt)) {
+      dispatch(removePref(lowerOpt))
+    } else {
+      dispatch(addPref(lowerOpt))
+    }
   }
 
   const addPreference = () => {
-    if (newPref.trim() && !options.includes(newPref)) {
-      setOptions([...options, newPref])
-      setSelected([...selected, newPref])
+    const lowerPref = newPref.trim().toLowerCase()
+    if (lowerPref && !options.includes(lowerPref)) {
+      setOptions([...options, lowerPref])
+      dispatch(addCustomPref(lowerPref))
     }
     setNewPref("")
     setAdding(false)
   }
 
+  const removeCustomPreference = (pref) => {
+    setOptions(options.filter(o => o !== pref))
+    if (selected.includes(pref)) dispatch(removePref(pref))
+  }
+
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-start bg-gradient-to-br from-black via-gray-900 to-black text-white p-10 overflow-hidden">
       
-      {/* Neon blobs background */}
       <motion.div
         animate={{ opacity: [0.3, 0.6, 0.3], scale: [1, 1.2, 1] }}
         transition={{ duration: 8, repeat: Infinity }}
@@ -46,7 +64,6 @@ export default function PreferencesPage() {
         className="absolute w-96 h-96 rounded-full bg-yellow-300 blur-3xl bottom-20 right-20 opacity-40"
       />
 
-      {/* Title */}
       <motion.h1
         initial={{ y: -40, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
@@ -56,7 +73,6 @@ export default function PreferencesPage() {
         Choose Your Preferences
       </motion.h1>
 
-      {/* Instruction */}
       <motion.p
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -66,7 +82,6 @@ export default function PreferencesPage() {
         * Best results when you pick <span className="text-cyan-300 font-bold">3–7 preferences</span>
       </motion.p>
 
-      {/* Bubble selector */}
       <div className="mt-12 flex flex-wrap gap-4 justify-center max-w-3xl z-10">
         {options.map((opt, i) => (
           <motion.button
@@ -74,16 +89,15 @@ export default function PreferencesPage() {
             whileTap={{ scale: 0.9 }}
             onClick={() => toggleSelect(opt)}
             className={`px-6 py-3 rounded-full text-lg font-semibold shadow-lg transition-all 
-              ${selected.includes(opt)
-                ? "bg-gradient-to-r from-cyan-400 to-yellow-300 text-black"
+              ${selected.includes(opt) 
+                ? "bg-gradient-to-r from-cyan-400 to-yellow-300 text-black" 
                 : "bg-gray-800 hover:bg-gray-700 text-white"}`}
           >
-            {opt}
+            {capitalize(opt)}
           </motion.button>
         ))}
       </div>
 
-      {/* Add More Button */}
       <div className="mt-8 z-10">
         {!adding ? (
           <button
@@ -117,11 +131,16 @@ export default function PreferencesPage() {
         {selected.length > 0 ? (
           <div className="flex flex-wrap gap-3">
             {selected.map((s, i) => (
-              <span
-                key={i}
-                className="px-4 py-2 rounded-full bg-gradient-to-r from-yellow-300 to-cyan-400 text-black font-semibold"
-              >
-                {s}
+              <span key={i} className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-yellow-300 to-cyan-400 text-black font-semibold">
+                {capitalize(s)}
+                {options.includes(s) && !defaultOptions.includes(s) && (
+                  <button
+                    onClick={() => removeCustomPreference(s)}
+                    className="ml-2 text-red-600 font-bold"
+                  >
+                    ×
+                  </button>
+                )}
               </span>
             ))}
           </div>
@@ -130,18 +149,21 @@ export default function PreferencesPage() {
         )}
       </div>
 
-      {/* Continue Button */}
       {selected.length > 0 && (
-        <motion.button
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5, duration: 0.6 }}
-          onClick={() => router.push("/results")}
-          className="mt-10 px-8 py-4 rounded-full bg-gradient-to-r from-cyan-400 to-yellow-300 text-black font-bold text-xl shadow-lg hover:scale-105 transition"
-        >
-          See Results 
-        </motion.button>
-      )}
+      <motion.button
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5, duration: 0.6 }}
+        onClick={() => {
+          localStorage.setItem("prefs", JSON.stringify(selected))
+          router.push("/results")
+        }}
+        className="mt-10 px-8 py-4 rounded-full bg-gradient-to-r from-cyan-400 to-yellow-300 text-black font-bold text-xl shadow-lg hover:scale-105 transition"
+      >
+        See Results 
+      </motion.button>
+    )}
+      
     </div>
   )
 }

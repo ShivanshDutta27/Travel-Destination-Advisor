@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 import joblib
@@ -88,6 +89,18 @@ def predict_destination(city, country, months, category_tokens):
 # print(predict_destination("SampleCity", "SampleCountry", "Jan,Feb", ["beach", "museum","history"]))  
 
 app = FastAPI()
+origins = [
+    "http://localhost:3000",  # Next.js dev
+    "http://127.0.0.1:3000"
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 class Prefs(BaseModel):
     city: str
